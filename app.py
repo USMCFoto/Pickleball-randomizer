@@ -2,7 +2,147 @@ import streamlit as st
 import random
 
 st.set_page_config(page_title="Pickleball Randomizer", page_icon="🥒", layout="centered")
+import streamlit as st
+import random
+import time
 
+st.set_page_config(
+    page_title="Pickleball Randomizer", 
+    page_icon="🥒", 
+    layout="centered",
+    initial_sidebar_state="collapsed"  # Hides sidebar on mobile
+)
+
+st.title("🥒 Pickleball Randomizer")
+st.markdown("**Brought to you by [Ecoglitter.com](https://ecoglitter.com)**")
+
+# ====================== ROSTER GENERATOR ======================
+st.subheader("Roster Generator")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    num_players = st.number_input("Players", min_value=4, value=19, step=1)
+with col2:
+    num_courts = st.number_input("Courts", min_value=1, value=5, step=1)
+with col3:
+    num_rounds = st.number_input("Rounds", min_value=1, value=12, step=1)
+
+names_text = st.text_area(
+    "Player Names (one per line - optional)",
+    height=120,
+    placeholder="One name per line\nLeave blank for P1, P2..."
+)
+
+if st.button("Generate Roster", type="primary", use_container_width=True):
+    if names_text.strip():
+        player_names = [line.strip() for line in names_text.splitlines() if line.strip()]
+        if len(player_names) != num_players:
+            st.error(f"You entered {len(player_names)} names but selected {num_players} players.")
+            st.stop()
+    else:
+        player_names = [f"P{i+1}" for i in range(num_players)]
+
+    actual_courts = min(num_courts, num_players // 4)
+    byes_per_round = num_players - (actual_courts * 4)
+
+    roster = []
+    used_pairs = set()
+    bye_count = [0] * num_players
+
+    for round_num in range(1, num_rounds + 1):
+        if byes_per_round > 0:
+            candidates = sorted(range(num_players), key=lambda i: (bye_count[i], random.random()))
+            bye_indices = candidates[:byes_per_round]
+            for i in bye_indices:
+                bye_count[i] += 1
+        else:
+            bye_indices = []
+
+        playing = [i for i in range(num_players) if i not in bye_indices]
+        random.shuffle(playing)
+
+        courts = []
+        for c in range(actual_courts):
+            a, b, c_idx, d = playing[:4]
+            playing = playing[4:]
+            team1 = sorted([player_names[a], player_names[b]])
+            team2 = sorted([player_names[c_idx], player_names[d]])
+            courts.append(f"**Court {c+1}:** {team1[0]} & {team1[1]} vs {team2[0]} & {team2[1]}")
+
+        roster.append({
+            "round": round_num,
+            "byes": [player_names[i] for i in sorted(bye_indices)] if bye_indices else None,
+            "courts": courts
+        })
+
+    st.success(f"Using {actual_courts} courts ({byes_per_round} byes per round)")
+
+    for r in roster:
+        st.subheader(f"Round {r['round']}")
+        if r.get('byes'):
+            st.write(f"**Byes:** {', '.join(r['byes'])}")
+        for court in r['courts']:
+            st.write(court)
+        st.divider()
+
+    output_text = "\n\n".join([
+        f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
+        for r in roster
+    ])
+    st.download_button("📥 Download Roster", output_text, file_name="Pickleball_Roster.txt", mime="text/plain")
+
+# ====================== MOBILE-OPTIMIZED TIMER ======================
+st.divider()
+st.subheader("⏱️ Game Timer")
+
+col_t1, col_t2 = st.columns(2)
+with col_t1:
+    minutes = st.number_input("Minutes", min_value=1, value=15, step=1)
+with col_t2:
+    seconds = st.number_input("Seconds", min_value=0, value=0, step=1)
+
+total_seconds = minutes * 60 + seconds
+
+if "timer_running" not in st.session_state:
+    st.session_state.timer_running = False
+    st.session_state.time_left = total_seconds
+
+# Big buttons for mobile
+btn1, btn2, btn3 = st.columns(3)
+if btn1.button("▶️ Start", use_container_width=True):
+    st.session_state.timer_running = True
+    st.session_state.start_time = time.time()
+    st.session_state.time_left = total_seconds
+
+if btn2.button("⏸️ Pause", use_container_width=True):
+    st.session_state.timer_running = False
+
+if btn3.button("🔄 Reset", use_container_width=True):
+    st.session_state.timer_running = False
+    st.session_state.time_left = total_seconds
+
+timer_placeholder = st.empty()
+progress_bar = st.progress(1.0)
+
+if st.session_state.timer_running and st.session_state.time_left > 0:
+    elapsed = time.time() - st.session_state.start_time
+    st.session_state.time_left = max(0, total_seconds - int(elapsed))
+    
+    mins, secs = divmod(st.session_state.time_left, 60)
+    timer_placeholder.metric("⏳ Time Remaining", f"{mins:02d}:{secs:02d}", delta=None)
+    
+    progress_bar.progress(st.session_state.time_left / total_seconds if total_seconds > 0 else 0)
+
+    if st.session_state.time_left <= 0:
+        st.success("⏰ TIME'S UP!")
+        st.balloons()
+        st.audio("https://www.soundjay.com/buttons/beep-07.mp3", autoplay=True)
+        st.session_state.timer_running = False
+    else:
+        time.sleep(0.3)
+        st.rerun()
+
+st.caption("Optimized for mobile • Vertical portrait mode")
 st.title("🥒 Pickleball Randomizer")
 st.markdown("**Brought to you by [Ecoglitter.com](https://ecoglitter.com)**")
 
