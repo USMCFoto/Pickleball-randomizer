@@ -82,16 +82,6 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
             "courts": courts
         })
 
-    st.success(f"✅ Generated using {actual_courts} courts ({byes_per_round} byes per round)")
-
-    for r in roster:
-        st.subheader(f"Round {r['round']}")
-        if r.get('byes'):
-            st.write(f"**Byes:** {', '.join(r['byes'])}")
-        for court in r['courts']:
-            st.write(court)
-        st.divider()
-
     # Download button
     output_text = "\n\n".join([
         f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
@@ -103,5 +93,17 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
         file_name=f"Pickleball_Roster_{random.randint(1000,9999)}.txt",
         mime="text/plain"
     )
+
+    st.success(f"✅ Generated using {actual_courts} courts ({byes_per_round} byes per round)")
+
+    for r in roster:
+        st.subheader(f"Round {r['round']}")
+        if r.get('byes'):
+            st.write(f"**Byes:** {', '.join(r['byes'])}")
+        for court in r['courts']:
+            st.write(court)
+        st.divider()
+
+
 
 st.caption("")
