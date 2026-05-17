@@ -30,6 +30,8 @@ if "num_rounds" not in st.session_state:
     st.session_state.num_rounds = 0
 if "num_courts" not in st.session_state:
     st.session_state.num_courts = 0
+if "num_players_original" not in st.session_state:
+    st.session_state.num_players_original = 0
 
 # ---------- Inputs ----------
 col1, col2, col3 = st.columns(3)
@@ -55,10 +57,12 @@ def generate_rounds(start_round, end_round, player_names, used_pairs, bye_count,
         actual_courts = min(num_courts, num_players // 4)
         byes_per_round = num_players - (actual_courts * 4)
 
-        # byes
         if byes_per_round > 0:
             indices = list(range(num_players))
-            indices_sorted = sorted(indices, key=lambda i: (bye_count[player_names[i]], random.random()))
+            indices_sorted = sorted(
+                indices,
+                key=lambda i: (bye_count[player_names[i]], random.random())
+            )
             bye_indices = indices_sorted[:byes_per_round]
             for i in bye_indices:
                 bye_count[player_names[i]] += 1
@@ -86,7 +90,6 @@ def generate_rounds(start_round, end_round, player_names, used_pairs, bye_count,
             pair1 = tuple(team1)
             pair2 = tuple(team2)
 
-            # try to avoid repeat partners while there are many unused combos
             max_pairs = len(player_names) * (len(player_names) - 1) // 2
             if pair1 in used_pairs and len(used_pairs) < (max_pairs - 20):
                 random.shuffle(team1)
@@ -116,7 +119,6 @@ def generate_rounds(start_round, end_round, player_names, used_pairs, bye_count,
 
 # ---------- Generate full roster ----------
 if st.button("Generate Roster", type="primary", use_container_width=True):
-    # build player list
     if names_text.strip():
         player_names = [line.strip() for line in names_text.splitlines() if line.strip()]
         if len(player_names) != num_players_input:
@@ -125,11 +127,9 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
     else:
         player_names = [f"P{i+1}" for i in range(num_players_input)]
 
-    # init tracking
     used_pairs = set()
     bye_count = {name: 0 for name in player_names}
 
-    # generate all rounds
     roster, used_pairs, bye_count = generate_rounds(
         start_round=1,
         end_round=num_rounds_input,
@@ -143,8 +143,8 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
     st.session_state.player_names = player_names
     st.session_state.num_rounds = num_rounds_input
     st.session_state.num_courts = num_courts_input
+    st.session_state.num_players_original = num_players_input
 
-    # simple info from first round
     first_round = roster[0]
     actual_courts = len(first_round["courts"])
     byes_per_round = len(first_round["byes"])
@@ -154,7 +154,6 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
 if st.session_state.roster_history:
     roster = st.session_state.roster_history
 
-    # download text
     output_text_parts = []
     for r in roster:
         byes_str = ", ".join(r["byes"]) if r["byes"] else "None"
@@ -173,7 +172,6 @@ if st.session_state.roster_history:
 
     st.divider()
 
-    # display roster
     for r in roster:
         st.subheader(f"Round {r['round']}")
         if r["byes"]:
@@ -182,7 +180,7 @@ if st.session_state.roster_history:
             st.write(court["text"])
         st.divider()
 
-    # ---------- Retroactive editing UI ----------
+    # ---------- Modify mid‑session (retroactive) ----------
     st.subheader("Modify Roster Mid‑Session (Retroactive)")
 
     max_round = st.session_state.num_rounds
@@ -195,60 +193,65 @@ if st.session_state.roster_history:
     )
 
     current_players = st.session_state.player_names.copy()
+
     players_leaving = st.multiselect(
         "Players leaving at this round:",
         current_players
     )
 
+    st.markdown("### Add New Numbered Players")
+
+    original_count = st.session_state.num_players_original or len(current_players)
+    next_numbers = [f"P{i}" for i in range(original_count + 1, original_count + 11)]
+
+    numbered_additions = st.multiselect(
+        "Select new numbered players to add:",
+        next_numbers
+    )
+
     new_players_text = st.text_input(
-        "New players joining at this round (comma separated):",
+        "Or add new players by name (comma separated):",
         placeholder="e.g. Alex, Jamie, Taylor"
     )
 
     if st.button("Apply Roster Changes and Regenerate"):
-        # 1. keep rounds before change_round
         preserved_rounds = [r for r in st.session_state.roster_history if r["round"] < change_round]
 
-        # 2. rebuild player list from last preserved round (or from session state)
         player_names = current_players
 
-        # 3. rebuild used_pairs and bye_count from preserved rounds
         used_pairs = set()
         bye_count = {name: 0 for name in player_names}
 
         for r in preserved_rounds:
-            # byes
             for b in r["byes"]:
                 if b in bye_count:
                     bye_count[b] += 1
-            # courts
             for court in r["courts"]:
                 t1 = tuple(sorted(court["team1"]))
                 t2 = tuple(sorted(court["team2"]))
                 used_pairs.add(t1)
                 used_pairs.add(t2)
 
-        # 4. apply leaving players
         for p in players_leaving:
             if p in player_names:
                 player_names.remove(p)
-            if p in bye_count:
-                bye_count.pop(p, None)
+            bye_count.pop(p, None)
 
-        # 5. apply new players
-        new_players = []
+        for p in numbered_additions:
+            if p not in player_names:
+                player_names.append(p)
+                bye_count[p] = 0
+
         if new_players_text.strip():
             for raw in new_players_text.split(","):
                 name = raw.strip()
                 if name and name not in player_names:
                     player_names.append(name)
                     bye_count[name] = 0
-                    new_players.append(name)
 
         if len(player_names) < 4:
             st.error("Not enough players to continue after these changes (need at least 4).")
         else:
-            # 6. regenerate rounds from change_round to end
             new_rounds, used_pairs, bye_count = generate_rounds(
                 start_round=change_round,
                 end_round=st.session_state.num_rounds,
@@ -258,14 +261,13 @@ if st.session_state.roster_history:
                 num_courts=st.session_state.num_courts
             )
 
-            # 7. update session state
             st.session_state.roster_history = preserved_rounds + new_rounds
             st.session_state.player_names = player_names
 
             st.success(
                 f"Roster updated starting at Round {change_round}. "
                 f"Players leaving: {', '.join(players_leaving) if players_leaving else 'None'}. "
-                f"Players joining: {', '.join(new_players) if new_players else 'None'}."
+                f"Players added: {', '.join(numbered_additions) if numbered_additions else 'None'}."
             )
             st.experimental_rerun()
 
