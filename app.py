@@ -85,3 +85,14 @@ def generate_rounds(start_round, end_round, player_names, used_pairs, bye_count,
             d = player_names[d_idx]
 
             team1 = sorted([a, b])
+            team2 = sorted([c_name, d])
+
+            pair1 = tuple(team1)
+            pair2 = tuple(team2)
+
+            max_pairs = len(player_names) * (len(player_names) - 1) // 2
+            if pair1 in used_pairs and len(used_pairs) < (max_pairs - 20):
+                random.shuffle(team1)
+                pair1 = tuple(sorted(team1))
+            if pair2 in used_pairs and len(used_pairs) < (max_pairs - 20):
+                random
