@@ -48,11 +48,10 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
     byes_per_round = num_players - (actual_courts * 4)
 
     roster = []
-    used_pairs = set()          # Track all used partnerships
+    used_pairs = set()
     bye_count = [0] * num_players
 
     for round_num in range(1, num_rounds + 1):
-        # Select byes fairly
         if byes_per_round > 0:
             candidates = sorted(range(num_players), key=lambda i: (bye_count[i], random.random()))
             bye_indices = candidates[:byes_per_round]
@@ -65,28 +64,26 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
         random.shuffle(playing)
 
         courts = []
-
         for c in range(actual_courts):
             if len(playing) < 4:
                 break
-                
-            p1, p2, p3, p4 = playing[:4]
+            a, b, c_idx, d = playing[:4]
             playing = playing[4:]
 
-            # Strong preference for new partnerships
-            team1 = [player_names[p1], player_names[p2]]
-            team2 = [player_names[p3], player_names[p4]]
+            team1 = sorted([player_names[a], player_names[b]])
+            team2 = sorted([player_names[c_idx], player_names[d]])
 
-            pair1 = tuple(sorted(team1))
-            pair2 = tuple(sorted(team2))
+            pair1 = tuple(team1)
+            pair2 = tuple(team2)
 
-            # If pair already used and we still have many unused combinations, reshuffle
-            if pair1 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 10):
+            if pair1 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 20):
                 random.shuffle(team1)
-            if pair2 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 10):
+            if pair2 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 20):
                 random.shuffle(team2)
 
-            courts.append(f"**Court {c+1}:** {team1[0]} & {team1[1]} vs {team2[0]} & {team2[1]}")
+            # New format with "serving to"
+            court_str = f"**Court {c+1}:** {team1[0]} & {team1[1]} serving to {team2[0]} & {team2[1]}"
+            courts.append(court_str)
             used_pairs.add(tuple(sorted(team1)))
             used_pairs.add(tuple(sorted(team2)))
 
@@ -96,14 +93,24 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
             "courts": courts
         })
 
-    # Display
     st.success(f"✅ Generated using {actual_courts} courts ({byes_per_round} byes per round)")
-  st.download_button(
+
+    # Download button (above roster)
+    output_text = "\n\n".join([
+        f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
+        for r in roster
+    ])
+    st.download_button(
         label="📥 Download Roster as Text File",
         data=output_text,
         file_name=f"Pickleball_Roster_{random.randint(1000,9999)}.txt",
-        mime="text/plain"
-  )
+        mime="text/plain",
+        use_container_width=True
+    )
+
+    st.divider()
+
+    # Display roster
     for r in roster:
         st.subheader(f"Round {r['round']}")
         if r.get('byes'):
@@ -112,8 +119,4 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
             st.write(court)
         st.divider()
 
-    # Download
-    output_text = "\n\n".join([
-        f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
-        for r in roster
-    ])
+st.caption("")
