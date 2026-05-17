@@ -243,7 +243,7 @@ if st.session_state.roster_history:
                 f"Players leaving: {', '.join(players_leaving) if players_leaving else 'None'}. "
                 f"Players added: {', '.join(numbered_additions) if numbered_additions else 'None'}."
             )
-            st.experimental_rerun()
+st.rerun()
 
     st.divider()
 
