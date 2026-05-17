@@ -247,4 +247,29 @@ if st.session_state.roster_history:
     roster = st.session_state.roster_history
     output_text_parts = []
     for r in roster:
-        byes_str = ", ".join(r["byes"]) if r["byes"] else "
+        byes_str = ", ".join(r["byes"]) if r["byes"] else "None"
+        courts_lines = [c["text"].replace("**", "") for c in r["courts"]]
+        block = f"ROUND {r['round']}\nByes: {byes_str}\n" + "\n".join(courts_lines)
+        output_text_parts.append(block)
+    output_text = "\n\n".join(output_text_parts)
+
+    st.download_button(
+        label="📥 Download Roster as Text File",
+        data=output_text,
+        file_name=f"Pickleball_Roster_{random.randint(1000,9999)}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+
+    st.divider()
+
+    # ---------- DISPLAY ROSTER ----------
+    for r in roster:
+        st.subheader(f"Round {r['round']}")
+        if r["byes"]:
+            st.write(f"**Byes:** {', '.join(r['byes'])}")
+        for court in r["courts"]:
+            st.write(court["text"])
+        st.divider()
+
+st.caption("")
