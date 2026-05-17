@@ -117,7 +117,7 @@ def generate_rounds(start_round, end_round, player_names, used_pairs, bye_count,
 
     return rounds, used_pairs, bye_count
 
-# ---------- Generate Roster Button (ALWAYS VISIBLE) ----------
+# ---------- Generate Roster Button ----------
 st.markdown("### Generate Full Session Roster")
 
 generate_clicked = st.button("Generate Roster", type="primary", use_container_width=True)
@@ -155,9 +155,9 @@ if generate_clicked:
         f"({len(first_round['byes'])} byes in Round 1)"
     )
 
-# ---------- MODIFY MID‑SESSION (RETROACTIVE) ----------
+# ---------- MODIFY MID‑SESSION ----------
 if st.session_state.roster_history:
-    st.subheader("Modify Roster Mid‑Session (Retroactive)")
+    st.subheader("Modify Roster Mid‑Session")
 
     max_round = st.session_state.num_rounds
     change_round = st.number_input(
