@@ -1,7 +1,6 @@
 import streamlit as st
 import random
 
-# ====================== PAGE CONFIG & HIDE STREAMLIT BRANDING ======================
 st.set_page_config(
     page_title="Pickleball Randomizer",
     page_icon="🥒",
@@ -9,27 +8,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Hide "Made with Streamlit" footer and menu
+# Hide Streamlit branding
 st.markdown("""
     <style>
         footer {visibility: hidden;}
         #MainMenu {visibility: hidden;}
         .stDeployButton {display:none;}
         header {visibility: hidden;}
-        .css-1lsm2x {display: none;}
     </style>
 """, unsafe_allow_html=True)
 
-# ====================== MAIN APP ======================
 st.title("🥒 Pickleball Randomizer")
 st.markdown("**Brought to you by [Ecoglitter.com](https://ecoglitter.com)**")
 
-# Input section
 col1, col2, col3 = st.columns(3)
 with col1:
-    num_players = st.number_input("Number of Players", min_value=4, value=19, step=1)
+    num_players = st.number_input("Number of Players", min_value=4, value=12, step=1)
 with col2:
-    num_courts = st.number_input("Number of Courts", min_value=1, value=5, step=1)
+    num_courts = st.number_input("Number of Courts", min_value=1, value=3, step=1)
 with col3:
     num_rounds = st.number_input("Number of Rounds", min_value=1, value=12, step=1)
 
@@ -48,15 +44,15 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
     else:
         player_names = [f"P{i+1}" for i in range(num_players)]
 
-    # Smart logic for any number of players/courts
     actual_courts = min(num_courts, num_players // 4)
     byes_per_round = num_players - (actual_courts * 4)
 
     roster = []
-    used_pairs = set()
+    used_pairs = set()          # Track all used partnerships
     bye_count = [0] * num_players
 
     for round_num in range(1, num_rounds + 1):
+        # Select byes fairly
         if byes_per_round > 0:
             candidates = sorted(range(num_players), key=lambda i: (bye_count[i], random.random()))
             bye_indices = candidates[:byes_per_round]
@@ -69,12 +65,30 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
         random.shuffle(playing)
 
         courts = []
+
         for c in range(actual_courts):
-            a, b, c_idx, d = playing[:4]
+            if len(playing) < 4:
+                break
+                
+            p1, p2, p3, p4 = playing[:4]
             playing = playing[4:]
-            team1 = sorted([player_names[a], player_names[b]])
-            team2 = sorted([player_names[c_idx], player_names[d]])
+
+            # Strong preference for new partnerships
+            team1 = [player_names[p1], player_names[p2]]
+            team2 = [player_names[p3], player_names[p4]]
+
+            pair1 = tuple(sorted(team1))
+            pair2 = tuple(sorted(team2))
+
+            # If pair already used and we still have many unused combinations, reshuffle
+            if pair1 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 10):
+                random.shuffle(team1)
+            if pair2 in used_pairs and len(used_pairs) < (num_players * (num_players-1) // 2 - 10):
+                random.shuffle(team2)
+
             courts.append(f"**Court {c+1}:** {team1[0]} & {team1[1]} vs {team2[0]} & {team2[1]}")
+            used_pairs.add(tuple(sorted(team1)))
+            used_pairs.add(tuple(sorted(team2)))
 
         roster.append({
             "round": round_num,
@@ -82,20 +96,14 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
             "courts": courts
         })
 
-    # Download button
-    output_text = "\n\n".join([
-        f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
-        for r in roster
-    ])
-    st.download_button(
+    # Display
+    st.success(f"✅ Generated using {actual_courts} courts ({byes_per_round} byes per round)")
+  st.download_button(
         label="📥 Download Roster as Text File",
         data=output_text,
         file_name=f"Pickleball_Roster_{random.randint(1000,9999)}.txt",
         mime="text/plain"
-    )
-
-    st.success(f"✅ Generated using {actual_courts} courts ({byes_per_round} byes per round)")
-
+  )
     for r in roster:
         st.subheader(f"Round {r['round']}")
         if r.get('byes'):
@@ -104,6 +112,8 @@ if st.button("Generate Roster", type="primary", use_container_width=True):
             st.write(court)
         st.divider()
 
-
-
-st.caption("")
+    # Download
+    output_text = "\n\n".join([
+        f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
+        for r in roster
+    ])
