@@ -3,19 +3,17 @@ import random
 
 st.set_page_config(page_title="Pickleball Randomizer", page_icon="🥒", layout="centered")
 
-# Hide Streamlit branding
 st.markdown("""
     <style>
         footer {visibility: hidden;}
         #MainMenu {visibility: hidden;}
-        .stDeployButton {display:none;}
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🥒 Pickleball Randomizer")
 st.markdown("**Brought to you by [Ecoglitter.com](https://ecoglitter.com)**")
 
-# ====================== SESSION STATE ======================
+# Initialize session state
 if 'roster' not in st.session_state:
     st.session_state.roster = []
     st.session_state.used_pairs = set()
@@ -24,8 +22,8 @@ if 'roster' not in st.session_state:
     st.session_state.total_rounds = 12
 
 # ====================== INITIAL SETUP ======================
-if len(st.session_state.roster) == 0:
-    st.subheader("Initial Session Setup")
+if not st.session_state.current_players:
+    st.subheader("Start New Session")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -36,9 +34,9 @@ if len(st.session_state.roster) == 0:
         st.session_state.total_rounds = st.number_input("Total Rounds", min_value=1, value=12, step=1)
 
     names_text = st.text_area(
-        "Player Names (one per line)",
-        height=180,
-        placeholder="Enter one player name per line..."
+        "Enter Player Names (one per line)",
+        height=200,
+        placeholder="Player 1\nPlayer 2\nPlayer 3\n..."
     )
 
     if st.button("🚀 Start New Session", type="primary", use_container_width=True):
@@ -47,37 +45,36 @@ if len(st.session_state.roster) == 0:
         else:
             st.session_state.current_players = [f"P{i+1}" for i in range(num_players)]
         
-        st.success(f"Session started with {len(st.session_state.current_players)} players!")
+        st.success(f"✅ Session started with {len(st.session_state.current_players)} players!")
         st.rerun()
 
-# ====================== MAIN APP (After Session Started) ======================
+# ====================== MAIN INTERFACE (After Starting) ======================
 else:
-    st.success(f"**Active Session** — {len(st.session_state.current_players)} players | {len(st.session_state.roster)} rounds completed")
+    st.success(f"Active Session • {len(st.session_state.current_players)} Players • {len(st.session_state.roster)}/{st.session_state.total_rounds} Rounds")
 
     # Show current players
-    st.write("**Current Players:**", ", ".join(st.session_state.current_players[:15]) + 
-             ("..." if len(st.session_state.current_players) > 15 else ""))
+    st.write("**Current Players:**", ", ".join(st.session_state.current_players))
 
-    # ====================== INTERRUPT SECTION ======================
     st.divider()
-    st.subheader("🔄 Interrupt Game Session")
 
+    # Interrupt Section
+    st.subheader("🔄 Interrupt Game Session")
     col_a, col_b = st.columns(2)
     with col_a:
-        add_text = st.text_area("Add New Players", height=80, placeholder="John\nSarah")
+        add_text = st.text_area("➕ Add New Players", height=80, placeholder="New Player 1\nNew Player 2")
     with col_b:
-        remove_text = st.text_area("Remove Players", height=80, placeholder="Bob\nLisa")
+        remove_text = st.text_area("➖ Remove Players", height=80, placeholder="Player to remove")
 
     if st.button("Apply Player Changes"):
         current = st.session_state.current_players.copy()
         
         # Remove
-        for p in [line.strip() for line in remove_text.splitlines() if line.strip()]:
+        for p in [x.strip() for x in remove_text.splitlines() if x.strip()]:
             if p in current:
                 current.remove(p)
         
         # Add
-        for p in [line.strip() for line in add_text.splitlines() if line.strip()]:
+        for p in [x.strip() for x in add_text.splitlines() if x.strip()]:
             if p not in current:
                 current.append(p)
         
@@ -85,19 +82,16 @@ else:
         st.success(f"Player list updated! Now {len(current)} players.")
         st.rerun()
 
-    # Generate more rounds
+    # Generate rounds
     remaining = st.session_state.total_rounds - len(st.session_state.roster)
     if remaining > 0:
         if st.button(f"Generate Next {remaining} Rounds", type="primary", use_container_width=True):
-            # Generation logic here (same reliable logic)
+            # Generation code (simplified)
             player_names = st.session_state.current_players
             num_players = len(player_names)
+            num_courts = 3  # You can make this editable later
             actual_courts = min(num_courts, num_players // 4)
             byes_per_round = num_players - (actual_courts * 4)
-
-            for p in player_names:
-                if p not in st.session_state.bye_count:
-                    st.session_state.bye_count[p] = 0
 
             for _ in range(remaining):
                 round_num = len(st.session_state.roster) + 1
@@ -106,7 +100,7 @@ else:
                     candidates = sorted(player_names, key=lambda p: (st.session_state.bye_count.get(p, 0), random.random()))
                     bye_list = candidates[:byes_per_round]
                     for p in bye_list:
-                        st.session_state.bye_count[p] += 1
+                        st.session_state.bye_count[p] = st.session_state.bye_count.get(p, 0) + 1
                 else:
                     bye_list = []
 
@@ -118,10 +112,8 @@ else:
                     if len(playing) < 4: break
                     t1a, t1b, t2a, t2b = playing[:4]
                     playing = playing[4:]
-
                     team1 = sorted([t1a, t1b])
                     team2 = sorted([t2a, t2b])
-
                     courts.append(f"**Court {c+1}:** {team1[0]} & {team1[1]} serving to {team2[0]} & {team2[1]}")
                     st.session_state.used_pairs.add(tuple(team1))
                     st.session_state.used_pairs.add(tuple(team2))
@@ -135,17 +127,10 @@ else:
             st.success(f"Added {remaining} rounds!")
             st.rerun()
 
-    # ====================== DISPLAY ROSTER ======================
+    # Display roster
     if st.session_state.roster:
         st.divider()
-        st.subheader("Session Roster")
-
-        full_text = "\n\n".join([
-            f"ROUND {r['round']}\nByes: {', '.join(r['byes']) if r.get('byes') else 'None'}\n" + "\n".join(r['courts'])
-            for r in st.session_state.roster
-        ])
-        
-        st.download_button("📥 Download Full Roster", full_text, "Pickleball_Roster.txt", use_container_width=True)
+        st.subheader("Roster")
 
         for r in st.session_state.roster:
             st.subheader(f"Round {r['round']}")
@@ -155,8 +140,8 @@ else:
                 st.write(court)
             st.divider()
 
-# Reset
-if st.button("Clear Everything & Start Over"):
+# Reset button
+if st.button("Start Completely New Session"):
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
