@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 st.set_page_config(
-    page_title="Pickleball Randomizer",
+    page_title="Pickleball Randomizer v1.5",
     page_icon="🥒",
     layout="centered",
     initial_sidebar_state="collapsed"
