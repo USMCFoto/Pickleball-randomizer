@@ -18,7 +18,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🥒 Pickleball Randomizer")
+st.title("🥒 Pickleball Randomizer v1.5")
 st.markdown("**Brought to you by [Ecoglitter.com](https://ecoglitter.com)**")
 
 # ---------- Session state init ----------
